@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Zero Notes is a personal fork of [siyuan-note/siyuan](https://github.com/siyuan-note/siyuan) (AGPL-3.0), a privacy-first knowledge management desktop app. The fork removes the subscription paywall so that S3, WebDAV, local, and SiYuan-cloud sync providers all work without an account.
+Zero Notes is a personal fork of [siyuan-note/siyuan](https://github.com/siyuan-note/siyuan) (AGPL-3.0), a privacy-first knowledge management desktop app, rebranded with custom icons and name.
 
 ## Fork-specific files
 
@@ -12,16 +12,13 @@ These files diverge from upstream and must be handled carefully when merging ups
 
 | File | What changed |
 |------|-------------|
-| `app/src/util/needSubscribe.ts` | `needSubscribe()` always returns `false`; `isPaidUser()` always returns `true` |
-| `kernel/model/conf.go` | `IsSubscriber()` and `IsPaidUser()` always return `true` |
-| `kernel/model/export.go` | Nil-guard on `Conf.GetUser()` (needed because `IsSubscriber()` is now always true) |
-| `kernel/model/cloud_service.go` | Same nil-guard for subscription expiry reminder |
-| `app/src/config/index.ts` | Account menu item hidden via `fn__none` (not removed) |
 | `app/appearance/langs/*.json` | `siyuanNote` key changed to `"Zero Notes"` in all 16 locale files |
 | `app/electron/init.html` | Title and heading renamed to Zero Notes |
-| `app/electron-builder-darwin-arm64.yml` | `productName` set to `"Zero Notes"` |
-| `app/package.json` | `name` set to `"Zero Notes"` |
-| `.github/workflows/cd.yml` | Mac ARM64 DMG + GHCR Docker image only; no other platforms |
+| `app/electron-builder-darwin-arm64.yml` | `productName: "Zero Notes"`, code signing disabled (`identity: null`) |
+| `app/package.json` | `name` set to `"zero-notes"` |
+| `app/src/assets/`, `app/stage/`, `app/appearance/boot/`, `app/electron/` | Icons replaced with Zero Notes branding |
+| `.github/workflows/cd.yml` | Mac ARM64 DMG built on every master push; rolling `latest` pre-release |
+| `.github/workflows/dockerimage.yml` | Pushes to GHCR (`ghcr.io/acolombo11/zero-notes`) instead of Docker Hub |
 | `.github/workflows/sync-upstream.yml` | Weekly upstream sync workflow (new) |
 
 ## Architecture
@@ -113,7 +110,7 @@ Always set `--accessAuthCode` when exposing the container to a network.
 
 ## Keeping the fork up to date
 
-A GitHub Actions workflow (`.github/workflows/sync-upstream.yml`) runs every Monday and opens a PR from `sync/upstream-YYYYMMDD` with upstream changes merged in. Review that PR for conflicts in the fork-specific files listed above before merging.
+A GitHub Actions workflow (`.github/workflows/sync-upstream.yml`) runs every Monday and opens a PR from `sync/upstream-YYYYMMDD` with upstream changes merged in. Review that PR for conflicts in the fork-specific files listed above before merging. The branding files (langs, init.html, electron-builder config, icons) are the most likely to conflict.
 
 To sync manually:
 
