@@ -13,18 +13,14 @@ files:
 afterPack: "./scripts/afterPack.js"
 
 mac:
-  identity: "Yunnan Liandi Technology Co., Ltd."
-  provisioningProfile: "../../SiYuan.provisionprofile"
+  identity: null
   icon: "src/assets/icon.icns"
   gatekeeperAssess: false
-  hardenedRuntime: true
-  entitlements: "../../entitlements.mas.plist"
   extendInfo:
     - NSMicrophoneUsageDescription: "This app requires microphone access to record audio."
-  entitlementsInherit: "../../entitlements.mas.plist"
   minimumSystemVersion: "10.15"
   protocols:
-    - name: "SiYuan"
+    - name: "Zero Notes"
       schemes:
         - "siyuan"
   extraResources:
