@@ -1,12 +1,11 @@
-name: CD For SiYuan
+name: CD
 
 on:
   push:
     tags:
-      - '*-dev*'
+      - 'v*'
   workflow_dispatch:
 
-# ref https://docs.github.com/zh/actions/learn-github-actions/variables
 env:
   package_json: "app/package.json"
 
@@ -21,34 +20,13 @@ jobs:
       packageManager: ${{ steps.packageManager.outputs.value }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - run: pip install PyGithub
-
-      - id: thisLatestRelease
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          # owner: siyuan-note
-          # repo: siyuan
-          repository: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          excludes: prerelease, draft
+        uses: actions/checkout@v4
 
       - name: Extract version from package.json
         uses: sergeysova/jq-action@v2
         id: version
         with:
           cmd: "jq .version ${{ env.package_json }} -r"
-
-      - name: Extract electronVersion from package.json
-        uses: sergeysova/jq-action@v2
-        id: electronVersion
-        with:
-          cmd: "jq .devDependencies.electron ${{ env.package_json }} -r"
 
       - name: Extract packageManager from package.json
         uses: sergeysova/jq-action@v2
@@ -58,115 +36,35 @@ jobs:
 
       - name: Gather Release Information
         id: release_info
-        run: |
-          echo "release_title=$(git show --format=%s --no-patch | head -1)" >> $GITHUB_OUTPUT
-          echo "release_version=$(TZ=Asia/Shanghai date +'v%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-          changelog_header=$(python scripts/parse-changelog-HEAD.py -t ${{ github.ref }} -b ${{ steps.thisLatestRelease.outputs.release }} -e ${{ steps.electronVersion.outputs.value }} ${{ github.repository }})
-          changelog=$(python scripts/parse-changelog.py -t ${{ github.ref }} ${{ github.repository }})
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "release_body<<$EOF" >> $GITHUB_ENV
-          echo "$changelog_header" >> $GITHUB_ENV
-          echo "$changelog" >> $GITHUB_ENV
-          echo "$EOF" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "release_version=$(cat app/package.json | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"version\"])')" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ steps.release_info.outputs.release_version }}
-          tag: ${{ github.ref }}
-          body: ${{ env.release_body }}
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           draft: false
-          prerelease: true
+          prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    runs-on: ${{ matrix.config.os }}
-    name: ${{ matrix.config.name }}
+    runs-on: macos-latest
+    name: Build mac-arm64.dmg
     needs: create_release
-    strategy:
-      matrix:
-        config:
-          - os: ubuntu-24.04
-            name: ubuntu build linux.AppImage
-            kernel_path: "../app/kernel-linux/SiYuan-Kernel"
-            build_args_prefix: "-s -w -X"
-            build_args_suffix: "Mode=prod"
-            electron_args: "dist-linux"
-            goos: "linux"
-            goarch: "amd64"
-            suffix: "linux.AppImage"
-          - os: ubuntu-24.04
-            name: ubuntu build linux.tar.gz
-            kernel_path: "../app/kernel-linux/SiYuan-Kernel"
-            build_args_prefix: "-s -w -X"
-            build_args_suffix: "Mode=prod"
-            electron_args: "dist-linux"
-            goos: "linux"
-            goarch: "amd64"
-            suffix: "linux.tar.gz"
-          - os: macos-latest
-            name: macos build mac.dmg
-            kernel_path: "../app/kernel-darwin/SiYuan-Kernel"
-            build_args_prefix: "-s -w -X"
-            build_args_suffix: "Mode=prod"
-            electron_args: "dist-darwin"
-            goos: "darwin"
-            goarch: "amd64"
-            suffix: "mac.dmg"
-          - os: macos-latest
-            name: macos build mac-arm64.dmg
-            kernel_path: "../app/kernel-darwin-arm64/SiYuan-Kernel"
-            build_args_prefix: "-s -w -X"
-            build_args_suffix: "Mode=prod"
-            electron_args: "dist-darwin-arm64"
-            goos: "darwin"
-            goarch: "arm64"
-            suffix: "mac-arm64.dmg"
-          - os: windows-latest
-            name: windows build win.exe
-            kernel_path: "../app/kernel/SiYuan-Kernel.exe"
-            build_args_prefix: "-s -w -H=windowsgui -X"
-            build_args_suffix: "Mode=prod"
-            electron_args: "dist"
-            goos: "windows"
-            gobin: "bin"
-            mingwsys: "MINGW64"
-            goarch: "amd64"
-            suffix: "win.exe"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
 
-      - name: Set up MingGW
-        uses: msys2/setup-msys2@v2
-        if: "contains( matrix.config.goos, 'windows')"
-        with:
-          install: p7zip mingw-w64-x86_64-lua
-
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/kernel/go.mod
-      - run: go version
-
-      - name: Set up goversioninfo
-        run: go get github.com/josephspurrier/goversioninfo/cmd/goversioninfo && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo
-        if: "contains( matrix.config.goos, 'windows')"
-        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/kernel
-        env:
-          GO111MODULE: on
-          CGO_ENABLED: 1
-          GOOS: ${{ matrix.config.goos }}
-          GOPATH: ${{ github.workspace }}/go
-          GOARCH: ${{ matrix.config.goarch }}
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
@@ -187,51 +85,67 @@ jobs:
         with:
           path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/build
 
-      - name: Remove Kernel Directory for Linux
-        uses: JesseTG/rm@v1.0.2
-        with:
-          path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel-linux
+      - name: Remove Kernel Directories
+        run: |
+          rm -rf ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel-linux
+          rm -rf ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel
+          rm -rf ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel-darwin
 
-      - name: Remove Kernel Directory for Windows
-        uses: JesseTG/rm@v1.0.2
-        with:
-          path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel
-
-      - name: Remove Kernel Directory for macOS
-        uses: JesseTG/rm@v1.0.2
-        with:
-          path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel-darwin
-
-      - name: Remove Kernel Directory for macOS ARM64
-        uses: JesseTG/rm@v1.0.2
-        with:
-          path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/kernel-darwin-arm64
-
-      - name: Generate Icon Resource and Properties/Version Info For Windows
-        run: ${{ github.workspace }}\go\${{ matrix.config.gobin }}\goversioninfo -platform-specific=true -icon="resource\icon.ico" -manifest="resource\goversioninfo.exe.manifest"
-        if: "contains( matrix.config.goos, 'windows')"
-        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/kernel
-
-      - name: Building Kernel
-        run: go build -tags fts5 -o "${{ matrix.config.kernel_path }}" -v -ldflags "${{ matrix.config.build_args_prefix }} github.com/${{ github.repository }}/kernel/util.${{ matrix.config.build_args_suffix }}"
+      - name: Building Kernel (arm64)
+        run: go build -tags fts5 -o "../app/kernel-darwin-arm64/SiYuan-Kernel" -v -ldflags "-s -w -X github.com/${{ github.repository }}/kernel/util.Mode=prod"
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/kernel
         env:
           GO111MODULE: on
           CGO_ENABLED: 1
-          GOOS: ${{ matrix.config.goos }}
+          GOOS: darwin
           GOPATH: ${{ github.workspace }}/go
-          GOARCH: ${{ matrix.config.goarch }}
+          GOARCH: arm64
 
-      - name: Building Electron App
-        run: pnpm run ${{ matrix.config.electron_args }}
+      - name: Building Electron App (arm64)
+        run: pnpm run dist-darwin-arm64
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app
 
-      - name: Upload Release
+      - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: siyuan-${{ needs.create_release.outputs.release_version }}-${{ matrix.config.suffix }}
-          asset_path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/build/siyuan-${{ needs.create_release.outputs.version }}-${{ matrix.config.suffix }}
+          asset_name: zero-notes-${{ needs.create_release.outputs.version }}-mac-arm64.dmg
+          asset_path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}/app/build/siyuan-${{ needs.create_release.outputs.version }}-mac-arm64.dmg
           asset_content_type: application/octet-stream
+
+  docker:
+    runs-on: ubuntu-latest
+    name: Build and push Docker image
+    needs: create_release
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ needs.create_release.outputs.version }}
