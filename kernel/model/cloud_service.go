@@ -236,8 +236,9 @@ func refreshSubscriptionExpirationRemind() {
 
 	defer logging.Recover()
 
-	if IsSubscriber() && -1 != Conf.GetUser().UserSiYuanProExpireTime {
-		expired := int64(Conf.GetUser().UserSiYuanProExpireTime)
+	u := Conf.GetUser()
+	if u != nil && -1 != u.UserSiYuanProExpireTime {
+		expired := int64(u.UserSiYuanProExpireTime)
 		now := time.Now().UnixMilli()
 		if now >= expired { // 已经过期
 			if now-expired <= 1000*60*60*24*2 { // 2 天内提醒 https://github.com/siyuan-note/siyuan/issues/7816
@@ -247,7 +248,7 @@ func refreshSubscriptionExpirationRemind() {
 		}
 		remains := int((expired - now) / 1000 / 60 / 60 / 24)
 		expireDay := 15 // 付费订阅提前 15 天提醒
-		if 2 == Conf.GetUser().UserSiYuanSubscriptionPlan {
+		if 2 == u.UserSiYuanSubscriptionPlan {
 			expireDay = 3 // 试用订阅提前 3 天提醒
 		}
 
