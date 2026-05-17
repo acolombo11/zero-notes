@@ -20,6 +20,9 @@ These files diverge from upstream and must be handled carefully when merging ups
 | `.github/workflows/cd.yml` | Mac ARM64 DMG built on every master push; rolling `latest` pre-release |
 | `.github/workflows/dockerimage.yml` | Pushes to GHCR (`ghcr.io/acolombo11/zero-notes`) instead of Docker Hub |
 | `.github/workflows/sync-upstream.yml` | Weekly upstream sync workflow (new) |
+| `app/appearance/.gitignore` | Added `!themes/Zero` exception to allow the Zero theme submodule |
+| `app/appearance/themes/Zero` | Git submodule pointing at `acolombo11/zero-notes-theme` |
+| `kernel/conf/appearance.go` | Default theme changed from `daylight`/`midnight` to `Zero` for both modes |
 
 ## Architecture
 
@@ -107,6 +110,26 @@ docker run -d -p 6806:6806 \
 ```
 
 Always set `--accessAuthCode` when exposing the container to a network.
+
+## Zero theme
+
+The Zero theme lives in a separate repo ([acolombo11/zero-notes-theme](https://github.com/acolombo11/zero-notes-theme)) and is included here as a git submodule at `app/appearance/themes/Zero`. It is set as the default theme for both light and dark modes in `kernel/conf/appearance.go`.
+
+After a fresh clone, initialise it:
+
+```bash
+git submodule update --init
+```
+
+To pull in theme updates after pushing new commits to `zero-notes-theme`:
+
+```bash
+git submodule update --remote app/appearance/themes/Zero
+git add app/appearance/themes/Zero
+git commit -m "chore(theme): update Zero theme submodule"
+```
+
+> **Note:** the submodule URL in `.gitmodules` is a relative path (`../zero-notes-theme`), which git resolves to `https://github.com/acolombo11/zero-notes-theme`. Theme commits must be pushed to that repo before running `--remote` here.
 
 ## Keeping the fork up to date
 

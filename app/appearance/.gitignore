@@ -2,6 +2,7 @@ themes/*/custom.css
 themes/*
 !themes/daylight/
 !themes/midnight/
+!themes/Zero
 
 icons/
 !icons/ant/

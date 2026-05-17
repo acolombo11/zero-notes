@@ -1,0 +1,3 @@
+[submodule "app/appearance/themes/Zero"]
+	path = app/appearance/themes/Zero
+	url = ../zero-notes-theme

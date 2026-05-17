@@ -42,8 +42,8 @@ func NewAppearance() *Appearance {
 	return &Appearance{
 		Mode:                0,
 		ModeOS:              true,
-		ThemeDark:           "midnight",
-		ThemeLight:          "daylight",
+		ThemeDark:           "Zero",
+		ThemeLight:          "Zero",
 		Icon:                "material",
 		CodeBlockThemeLight: "github",
 		CodeBlockThemeDark:  "base16/dracula",
