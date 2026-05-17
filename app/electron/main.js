@@ -489,7 +489,7 @@ const initMainWindow = () => {
     }
 
     // 菜单
-    const productName = "SiYuan";
+    const productName = "Zero Notes";
     const template = [{
         label: productName, submenu: [{
             label: `About ${productName}`, role: "about",
