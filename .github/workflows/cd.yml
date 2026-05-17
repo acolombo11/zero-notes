@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: true
           path: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
 
       - name: Extract version and packageManager from package.json
